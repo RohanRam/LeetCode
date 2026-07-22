@@ -1,13 +1,18 @@
 1class Solution:
 2    def maxArea(self, height: List[int]) -> int:
 3        n=len(height)
-4        marea=0
-5        for i in range(0,n):
-6            for j in range(i+1,n):
-7                area = (min(height[i],height[j])) * (j-i)
-8                if area > marea :
-9                    marea = area
-10                
-11        return marea
-12                
-13        
+4        left = 0
+5        right = n-1
+6        marea = 0
+7        while left < right:
+8            area = (min(height[left],height[right])) * (right-left)
+9            if marea < area :
+10                marea = area
+11            if height[left] < height[right] :
+12                left = left+1
+13            else :
+14                right = right-1
+15
+16        return marea
+17
+18        
