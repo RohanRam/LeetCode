@@ -36,76 +36,77 @@
 
 # 🛍️ Container-With-Most-Water | Explained
 
-## Approach 1: Brute Force (Nested Loops)
+## Approach 1: Two Pointers (Greedy Strategy)
 ### Intuition
-Imagine you have a series of vertical walls of varying heights standing in a line, and you want to choose two walls to hold water between them. The amount of water the pair can hold depends on two factors: the distance between the two walls (width) and the height of the shorter wall (since water would spill over if filled past the shorter wall's height). 
+Imagine holding two vertical board supports at opposite ends of a pool. The amount of water held between any two boards is constrained by two factors: the distance between them (width) and the height of the shorter board (height bottleneck).
 
-This approach systematically tests every possible pair of walls to measure the water capacity of each combination and keeps track of the maximum capacity found.
+To find the maximum possible volume, we start by placing our pointers at the maximum possible width (the extreme ends of the array). From this state, to potentially increase or maintain the area as the width shrinks, we must attempt to increase the height bottleneck. Moving the pointer at the taller board will only decrease the width while keeping the height bottleneck same or smaller, making an increase in area mathematically impossible. Therefore, the only logical choice is to greedily move the pointer pointing to the shorter board inward in hopes of finding a taller boundary.
 
 ### Algorithm Visualized
 ```mermaid
 flowchart TD
-    A[Start: Initialize max_area = 0] --> B[Loop i from 0 to n-1]
-    B --> C[Loop j from i+1 to n-1]
-    C --> D["Calculate height = min(height[i], height[j])"]
-    D --> E["Calculate width = j - i"]
-    E --> F["area = height * width"]
-    F --> G{"area > max_area?"}
-    G -- Yes --> H[max_area = area]
-    G -- No --> I[Continue inner loop]
-    H --> I
-    I --> J{End of inner loop?}
-    J -- No --> C
-    J -- Yes --> K{End of outer loop?}
-    K -- No --> B
-    K -- Yes --> L[Return max_area]
+    Start([Start]) --> Init[Initialize left = 0, right = n - 1, marea = 0]
+    Init --> Condition{left < right?}
+    Condition -- Yes --> CalcArea["Calculate area = min(height[left], height[right]) * (right - left)"]
+    CalcArea --> CheckMax{area > marea?}
+    CheckMax -- Yes --> UpdateMax[marea = area]
+    CheckMax -- No --> CheckHeight
+    UpdateMax --> CheckHeight{height[left] < height[right]?}
+    CheckHeight -- Yes --> MoveLeft[left = left + 1]
+    CheckHeight -- No --> MoveRight[right = right - 1]
+    MoveLeft --> Condition
+    MoveRight --> Condition
+    Condition -- No --> Return([Return marea])
 ```
 
 ### Approach
-1. Determine the number of elements $n$ in the input list `height`.
-2. Maintain a running maximum area variable (`marea`), initialized to `0`.
-3. Use a nested loop to check every unique pair of indices $(i, j)$ where $i < j$:
-   - The outer loop variable `i` represents the left boundary index.
-   - The inner loop variable `j` represents the right boundary index, starting at `i + 1`.
-4. For each pair $(i, j)$:
-   - Compute the bottleneck height using `min(height[i], height[j])`.
-   - Compute the width as `j - i`.
-   - Calculate the area as `bottleneck height * width`.
-   - Compare the calculated area with `marea` and update `marea` if the current area is strictly greater.
-5. Return `marea` after all pairs have been evaluated.
+1. **Initialize Pointers:** Set `left` pointer at index `0` and `right` pointer at index `n - 1`.
+2. **Track Maximum Area:** Maintain a running variable `marea` initialized to `0`.
+3. **Iterate with Two Pointers:** Loop while `left < right`:
+   - Compute current container width: `right - left`.
+   - Compute current container effective height: `min(height[left], height[right])`.
+   - Compute current area: `width * height`.
+   - Update `marea` if current `area` is greater than `marea`.
+   - **Greedy Move:** Compare `height[left]` and `height[right]`. Increment `left` if `height[left]` is smaller; otherwise, decrement `right`.
+4. **Return Result:** Once pointers meet, return `marea`.
 
 ### Detailed Code Analysis
-- **Line 3 (`n=len(height)`):** Calculates the total number of vertical lines in the list and stores it in variable `n`.
-- **Line 4 (`marea=0`):** Initializes `marea` (max area) to `0`, which will track the largest container area found so far.
-- **Line 5 (`for i in range(0,n):`):** Starts the outer loop, iterating through each possible left wall index `i` from index `0` up to `n-1`.
-- **Line 6 (`for j in range(i+1,n):`):** Starts the inner loop, iterating through each possible right wall index `j` starting from `i+1` to `n-1` to avoid comparing a line with itself or re-evaluating duplicate pairs.
-- **Line 7 (`area = (min(height[i],height[j])) * (j-i)`):** Computes the container area for the boundary pair `(i, j)`. `min(height[i], height[j])` determines the maximum effective height of the water, while `(j - i)` determines the distance between the lines.
-- **Lines 8–9 (`if area > marea: marea = area`):** Checks if the current container holds more water than the recorded maximum. If it does, updates `marea` to store this new maximum.
-- **Line 11 (`return marea`):** Returns the overall maximum area after evaluating all $O(n^2)$ pairs.
+- **Line 3 (`n=len(height)`):** Stores the total length of the array to compute initial boundaries.
+- **Lines 4–6 (`left = 0`, `right = n-1`, `marea = 0`):** Sets up the extreme boundaries to maximize initial width and initializes the variable `marea` to store the maximum container area found.
+- **Line 7 (`while left < right:`):** Loop invariant enforcing that a valid container requires at least two distinct lines.
+- **Line 8 (`area = (min(height[left],height[right])) * (right-left)`):** Calculates the water area formed between `height[left]` and `height[right]`. The bottleneck height is extracted via `min()`.
+- **Lines 9–10 (`if marea < area : marea = area`):** Updates the running maximum whenever a strictly larger area is encountered.
+- **Lines 11–14 (`if height[left] < height[right] : left = left+1 else : right = right-1`):** The core greedy heuristic. Skips lines bounded by the shorter line, as any inner line paired with the current shorter line would produce a strictly smaller area (smaller width, same or smaller height).
+- **Line 16 (`return marea`):** Returns the overall maximum area encountered during traversal.
 
 ### Code
 ```python
 class Solution:
     def maxArea(self, height: List[int]) -> int:
-        n=len(height)
-        marea=0
-        for i in range(0,n):
-            for j in range(i+1,n):
-                area = (min(height[i],height[j])) * (j-i)
-                if area > marea :
-                    marea = area
-                
+        n = len(height)
+        left = 0
+        right = n - 1
+        marea = 0
+        while left < right:
+            area = (min(height[left], height[right])) * (right - left)
+            if marea < area:
+                marea = area
+            if height[left] < height[right]:
+                left = left + 1
+            else:
+                right = right - 1
+
         return marea
 ```
 
 ### Complexity
-- **Time:** $\mathcal{O}(n^2)$ — The nested loops check every possible pair $(i, j)$. Total pairs evaluated equal $\frac{n(n-1)}{2}$, leading to quadratic time complexity, which will result in a Time Limit Exceeded (TLE) status on large inputs in LeetCode.
-- **Space:** $\mathcal{O}(1)$ — Only a constant number of variables (`n`, `marea`, `i`, `j`, `area`) are used, requiring no additional storage space proportional to input size.
+- **Time Complexity:** $\mathcal{O}(n)$ — In each step of the loop, either `left` is incremented or `right` is decremented. Thus, every element in `height` is examined at most once, resulting in linear execution time.
+- **Space Complexity:** $\mathcal{O}(1)$ — The algorithm only maintains scalar tracking variables (`n`, `left`, `right`, `marea`, `area`), using constant auxiliary memory.
 
 ## 🕵️‍♂️ Follow-up Questions (Optional)
 
-**Q: How can we optimize this solution to $\mathcal{O}(n)$ time complexity?**
-*A:* We can use the **Two-Pointer Technique**. Place one pointer at the start (`left = 0`) and one at the end (`right = len(height) - 1`). Compute the area at each step, update the max area, and then move the pointer pointing to the shorter line inward. Moving the taller line inward could never yield a larger area because the width decreases while the height remains constrained by the shorter line.
+1. **When `height[left] == height[right]`, does it matter which pointer is moved?**
+   - **Answer:** No. When both heights are equal, moving either pointer (or both) is correct. Because both boundaries share the same height bottleneck, keeping either wall while narrowing the width can never produce a larger area with any remaining interior wall unless both pointers are moved to find a strictly taller pair of lines.
 
-**Q: Why does moving the shorter line pointer guarantee we won't miss the optimal solution?**
-*A:* The container area is limited by `min(height[left], height[right]) * (right - left)`. If we keep the shorter line and move the taller line, the width decreases, and the height can never exceed `height[shorter]`. Thus, all other candidate pairs involving the current shorter line will strictly yield smaller areas. Therefore, discarding the shorter line is mathematically safe.
+2. **How does this problem differ fundamentally from "Trapping Rain Water"?**
+   - **Answer:** "Container With Most Water" asks for a single container formed by choosing *any two lines* in the array (ignoring intermediate lines inside). "Trapping Rain Water" computes the aggregate water trapped across *all* elevation relief bars based on local surrounding maximum heights. Two pointers work for both, but the governing formulas and conditions reflect global pair selection vs. local elevation bounds.
