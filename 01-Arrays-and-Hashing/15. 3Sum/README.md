@@ -44,83 +44,145 @@ Notice that the order of the output and the order of the triplets does not matte
 
 # 🛍️ 3Sum | Explained
 
-## Approach 1: Brute Force Search with Linear Deduplication
+## Approach 1: Sorting + Two-Pointer Convergence
 ### Intuition
-Imagine you have a bag of numbered balls and you want to find every group of three balls whose numbers add up to zero. The most straightforward strategy—and the one implemented here—is to systematically try every possible combination of three balls. It's like checking every combination on a three-dial lock until you find the combinations that total zero. To prevent adding the exact same combination multiple times (e.g., `[-1, 0, 1]` and `[0, 1, -1]`), each valid group is sorted into a standard order and checked against a master list of already found groups.
+Imagine you are at a gym rack with dumbbells of various positive and negative calibrated weights, and you need to find three weights that perfectly balance out to zero net weight. If the weights are scattered randomly, you would have to test every possible group of three—an inefficient $O(N^3)$ exhaustive search. 
+
+However, if you first arrange the dumbbells in strict order from lightest (most negative) to heaviest (most positive), the problem becomes much simpler:
+1. You fix one weight as your anchor (`nums[i]`).
+2. To find the remaining two weights that cancel out `nums[i]`, you place one hand at the lightest available weight (`left`) and your other hand at the heaviest available weight (`right`).
+3. If the combined sum is too heavy (greater than zero), you move your right hand to a lighter weight. If it is too light (less than zero), you move your left hand to a heavier weight.
+4. Because the array is sorted, identical values cluster together, allowing you to easily skip duplicate values and avoid reporting redundant triplets.
 
 ### Algorithm Visualized
+
 ```mermaid
 flowchart TD
-    Start([Start: input nums]) --> Init[n = len(nums), out = []]
-    Init --> LoopI[Loop i from 0 to n-1]
-    LoopI --> LoopJ[Loop j from i+1 to n-1]
-    LoopJ --> LoopK[Loop k from j+1 to n-1]
-    LoopK --> CheckSum{nums[i] + nums[j] + nums[k] == 0?}
-    CheckSum -- Yes --> SortTriplet["curr = sorted([nums[i], nums[j], nums[k]])"]
-    SortTriplet --> CheckDup{curr not in out?}
-    CheckDup -- Yes --> Append[out.append(curr)]
-    CheckDup -- No --> NextK[Next iteration]
-    Append --> NextK
-    CheckSum -- No --> NextK
-    NextK --> LoopK
-    LoopK -- End of k --> LoopJ
-    LoopJ -- End of j --> LoopI
-    LoopI -- End of i --> Return([Return out])
+    Start([Start: Input Array 'nums']) --> Sort[Sort 'nums' in non-decreasing order]
+    Sort --> OuterLoop[Loop 'i' from 0 to n-3]
+    
+    OuterLoop --> CheckDupI{i > 0 AND<br>nums[i] == nums[i-1]?}
+    CheckDupI -- Yes --> NextI[Continue to next 'i']
+    NextI --> OuterLoop
+    
+    CheckDupI -- No --> InitPointers[Set left = i + 1<br>Set right = n - 1]
+    
+    InitPointers --> PointerLoop{left < right?}
+    PointerLoop -- No --> NextI
+    
+    PointerLoop -- Yes --> CalcSum[total = nums[i] + nums[left] + nums[right]]
+    
+    CalcSum --> CheckSum{Compare 'total' to 0}
+    
+    CheckSum -- total > 0 --> DecRight[right = right - 1]
+    DecRight --> PointerLoop
+    
+    CheckSum -- total < 0 --> IncLeft[left = left + 1]
+    IncLeft --> PointerLoop
+    
+    CheckSum -- total == 0 --> AddResult[Append triplet to 'out']
+    AddResult --> SkipLeftDup[While left < right AND<br>nums[left] == nums[left+1]:<br>left++]
+    SkipLeftDup --> SkipRightDup[While right > left AND<br>nums[right] == nums[right-1]:<br>right--]
+    SkipRightDup --> MoveBoth[left++, right--]
+    MoveBoth --> PointerLoop
 ```
 
 ### Approach
-1. Determine the number of elements $n$ in the input list `nums`.
-2. Initialize an empty list `out` to store unique triplet combinations.
-3. Use three nested loops to generate all unique triplets based on indices $(i, j, k)$ such that $0 \le i < j < k < n$:
-   - The outer loop selects the first element index $i$.
-   - The middle loop selects the second element index $j$ starting from $i + 1$.
-   - The inner loop selects the third element index $k$ starting from $j + 1$.
-4. For each triplet index combination, compute the sum `nums[i] + nums[j] + nums[k]`.
-5. If the sum equals `0`:
-   - Sort the triplet to canonicalize its order so duplicate combinations appear identical.
-   - Perform a membership check `curr not in out`.
-   - If `curr` is not in `out`, append it to `out`.
-6. Return `out` after checking all combinations.
+1. **Sort the Input**: Sort `nums` in non-decreasing order. Sorting takes $O(N \log N)$ time and enables the directional two-pointer technique.
+2. **Anchor Outer Loop**: Iterate index `i` from `0` to `n - 3`. This index fixes the first element `nums[i]` of potential triplets.
+3. **Primary Duplicate Elimination**: Skip iteration if `i > 0` and `nums[i] == nums[i-1]`, as processing the same anchor value produces duplicate triplets.
+4. **Two-Pointer Setup**: Set `left = i + 1` and `right = n - 1`.
+5. **Sum Evaluation & Pointer Shrinking**:
+   - Calculate `total = nums[i] + nums[left] + nums[right]`.
+   - If `total > 0`, the sum is too large. Decrement `right` to reduce the sum.
+   - If `total < 0`, the sum is too small. Increment `left` to increase the sum.
+   - If `total == 0`, record `[nums[i], nums[left], nums[right]]` into the output array.
+6. **Secondary Duplicate Elimination**: Once a valid triplet is found, skip duplicate values for both `left` and `right` using `while` loops, then increment `left` and decrement `right` once more to find new distinct combinations.
 
 ### Detailed Code Analysis
-- **Line 3 (`n=len(nums)`):** Calculates the total number of elements in the list to define loop boundaries.
-- **Line 5 (`out=[]`):** Prepares an empty Python list that serves as the accumulator for result triplets.
-- **Lines 6–8 (`for i...`, `for j...`, `for k...`):**
-  - Line 6 starts the first pointer $i$ from index `0` up to `n-1`.
-  - Line 7 starts the second pointer $j$ from `i+1` up to `n-1` to guarantee $j > i$.
-  - Line 8 starts the third pointer $k$ from `j+1` up to `n-1` to guarantee $k > j$.
-  - This ensures every combination of 3 indices is tested exactly once.
-- **Line 9 (`if ((nums[i] + nums[j] + nums[k]) == 0):`):** Evaluates if the sum of the current values equals zero.
-- **Line 10 (`curr=sorted([nums[i] , nums[j] , nums[k]])`):** Creates a list of the three elements and sorts it in $O(1)$ time (since length is fixed at 3). Sorting normalizes permutations (e.g., `[-1, 1, 0]` becomes `[-1, 0, 1]`).
-- **Line 11 (`if curr not in out:`):** Performs a linear scan over the `out` list to check if `curr` has already been recorded. This prevents duplicate triplets in the output.
-- **Line 12 (`out.append(curr)`):** Appends the unique triplet to the results list.
-- **Line 13 (`return out`):** Returns the final list of triplets after all index combinations are exhausted.
+
+* **Lines 3–5 (`n=len(nums)`, `out=[]`, `nums.sort()`):**
+  We cache the length of the list, initialize the dynamic array `out` to store matching triplets, and sort `nums` in-place using Python's Timsort algorithm.
+
+* **Line 6 (`for i in range(n-2):`):**
+  The outer loop runs up to `n - 3` (written as `range(n-2)`). We stop here because a valid triplet requires at least two remaining elements to the right of `i` (`left` and `right`).
+
+* **Lines 7–8 (`if i>0 and nums[i] == nums[i-1]: continue`):**
+  Handles primary duplicate prevention. Checking `i > 0` prevents out-of-bounds access on index `-1`. If the current anchor `nums[i]` matches the preceding anchor `nums[i-1]`, we skip it immediately.
+
+* **Lines 10–11 (`left = i+1`, `right = n-1`):**
+  Initializes two pointers defining a shrinking search space between `i + 1` and the last element of the list.
+
+* **Line 13 (`while left < right:`):**
+  Executes the two-pointer sweep until the bounds cross or meet.
+
+* **Lines 14–18 (`total = ...`, `if total > 0: ... elif total < 0: ...`):**
+  Computes the sum of the selected triplet. Because the array is sorted, shifting `right` leftward strictly non-increases `total`, while shifting `left` rightward strictly non-decreases `total`.
+
+* **Lines 19–20 (`out.append(...)`):**
+  Executes when `total == 0`. The triplet forms a valid result and is saved to the output list.
+
+* **Lines 22–27 (`while left < right and nums[left] == nums[left+1]: ...`):**
+  Eliminates duplicate triplets for the current anchor `nums[i]`:
+  - Lines 22–23 advance `left` forward as long as `nums[left]` equals its right neighbor `nums[left+1]`.
+  - Lines 24–25 move `right` backward as long as `nums[right]` equals its left neighbor `nums[right-1]`.
+  - Lines 26–27 perform the final single step (`left += 1`, `right -= 1`) to position both pointers at completely new candidate values.
 
 ### Code
+
 ```python
 class Solution:
     def threeSum(self, nums: list[int]) -> list[list[int]]:
         n=len(nums)
-
         out=[]
-        for i in range (0,n):
-            for j in range(i+1,n):
-                for k in range(j+1,n):
-                    if ((nums[i] + nums[j] + nums[k]) == 0):
-                        curr=sorted([nums[i] , nums[j] , nums[k]])
-                        if curr not in out:
-                            out.append(curr)
+        nums.sort()
+        for i in range(n-2):
+            if i>0 and nums[i] == nums[i-1]:
+                continue
+            
+            left = i+1
+            right = n-1
+
+            while left < right:
+                total = nums[i] + nums[left] + nums[right]
+                if total > 0:
+                    right = right-1
+                elif total < 0:
+                    left = left+1
+                else :
+                    out.append([nums[i],nums[left],nums[right]])
+
+                    while left < right and nums[left] == nums[left+1]:
+                        left =left+1
+                    while right > left and nums[right] == nums[right-1]:
+                        right-=1
+                    left += 1
+                    right -= 1
+        
         return out
 ```
 
 ### Complexity
-- **Time:** $O(n^4)$ worst-case. Generating all index triplets takes $\binom{n}{3} = \frac{n(n-1)(n-2)}{6} = O(n^3)$ iterations. Inside the loop, `curr not in out` performs a linear search over `out`. Since `out` can hold up to $O(n^2)$ unique triplets, each check takes up to $O(n^2)$ time in the worst case, yielding an overall time complexity of $O(n^3 \cdot n^2)$ bounded by $O(n^4)$ or $O(n^3)$ depending on duplicate density. This causes a Time Limit Exceeded (TLE) error on LeetCode.
-- **Space:** $O(1)$ auxiliary space excluding the memory required to store the output list `out`. If accounting for the result storage, space complexity is $O(k)$ where $k$ is the number of unique triplets found (up to $O(n^2)$).
+- **Time Complexity:** $\mathcal{O}(N^2)$
+  - Sorting the array costs $\mathcal{O}(N \log N)$ time.
+  - The outer loop runs $\mathcal{O}(N)$ times. For each iteration, the inner `while` loop moves `left` and `right` toward each other, traversing the remaining elements at most once ($\mathcal{O}(N)$ operations per outer step).
+  - Overall time complexity: $\mathcal{O}(N \log N) + \mathcal{O}(N^2) = \mathcal{O}(N^2)$.
 
-## 🕵️‍♂️ Follow-up Questions (Optional)
+- **Space Complexity:** $\mathcal{O}(N)$
+  - Python's `sort()` uses Timsort, which requires up to $\mathcal{O}(N)$ auxiliary memory space in the worst case.
+  - Excluding the memory allocated for the returned answer (`out`), the auxiliary space complexity is $\mathcal{O}(N)$ due to sorting.
 
-**Q1: How can this solution be optimized to run in $O(n^2)$ time?**
-> **Answer:** Sort the array first in $O(n \log n)$ time. Then, iterate through the array with a fixed index `i` and use a Two-Pointer approach (`left` and `right`) for the remaining subarray to find pairs that sum to `-nums[i]`. Duplicates can be skipped efficiently by incrementing/decrementing pointers when consecutive elements are identical, eliminating the need for `if curr not in out`.
+---
 
-**Q2: Why is `curr not in out` inefficient, and how can duplicate checking be optimized?**
-> **Answer:** In Python, checking membership in a list (`not in list`) takes linear $O(M)$ time where $M$ is the length of the list. To optimize this without changing the general approach structure, a `set` of tuples could be used for $O(1)$ average lookup time, or sorting the input array initially allows skipping adjacent identical numbers during iteration without dynamic lookups.
+## 🕵️‍♂️ Follow-up Questions
+
+### 1. How can we optimize this solution with early termination conditions?
+Since the array is sorted, we can prune search branches early:
+* **Positive Anchor Break:** If `nums[i] > 0`, break the loop immediately. Because the array is sorted, all subsequent numbers will also be strictly positive ($> 0$), making it impossible for three positive numbers to sum to $0$.
+* **Minimum Sum Check:** If `nums[i] + nums[i+1] + nums[i+2] > 0`, break the loop. The smallest possible sum starting from `nums[i]` exceeds zero, so no further valid triplets exist.
+* **Maximum Sum Check:** If `nums[i] + nums[n-2] + nums[n-1] < 0`, skip this iteration using `continue`. The largest possible sum incorporating `nums[i]` is still less than zero, meaning `nums[i]` is too small to participate in any zero-sum triplet.
+
+### 2. Can 3Sum be solved without modifying the original input array?
+Yes. If mutating the input array is prohibited (e.g., in a read-only concurrent system):
+1. Create a sorted copy of the array using `sorted(nums)`, requiring $\mathcal{O}(N)$ additional space, and execute the two-pointer approach on the copy.
+2. Alternatively, use a Hash Set pattern similar to 2Sum: for each fixed anchor `nums[i]`, iterate over `nums[j]` ($j > i$) and check if candidate `-(nums[i] + nums[j])` exists in a dynamically populated hash set. This avoids sorting the array directly, though handling duplicate triplets cleanly becomes trickier and typically requires sorting each individual triplet before inserting into a global result set.
