@@ -1,0 +1,1 @@
+Select w1.id from Weather as w1  join Weather as w2on datediff(w1.recordDate,w2.recordDate) = 1where w1.temperature > w2.temperature ; -- on datediff(w1.recordDate,w2.recordDate) = 1 means w1.recordDate = w2.recordDate +  1 day
