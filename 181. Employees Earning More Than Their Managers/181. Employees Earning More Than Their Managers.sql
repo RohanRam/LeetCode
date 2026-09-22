@@ -1,0 +1,1 @@
+SELECT FROM Employee AS eJOIN Employee AS m    e.name AS EmployeeON e.managerId = m.id WHERE e.salary > m.salary;
