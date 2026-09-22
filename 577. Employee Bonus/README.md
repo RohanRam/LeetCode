@@ -2,7 +2,8 @@
 
 <p>Table: <code>Employee</code></p>
 
-<pre>+-------------+---------+
+<pre>
++-------------+---------+
 | Column Name | Type    |
 +-------------+---------+
 | empId       | int     |
@@ -18,7 +19,8 @@ Each row of this table indicates the name and the ID of an employee in addition 
 
 <p>Table: <code>Bonus</code></p>
 
-<pre>+-------------+------+
+<pre>
++-------------+------+
 | Column Name | Type |
 +-------------+------+
 | empId       | int  |
@@ -45,7 +47,8 @@ Each row of this table contains the id of an employee and their respective bonus
 <p>&nbsp;</p>
 <p><strong class="example">Example 1:</strong></p>
 
-<pre><strong>Input:</strong> 
+<pre>
+<strong>Input:</strong> 
 Employee table:
 +-------+--------+------------+--------+
 | empId | name   | supervisor | salary |
