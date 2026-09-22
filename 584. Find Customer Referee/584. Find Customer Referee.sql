@@ -1,0 +1,1 @@
+Select name from  Customerwhere referee_id != 2 or referee_id is Null ;
