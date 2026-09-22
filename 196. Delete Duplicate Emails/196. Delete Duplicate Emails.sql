@@ -1,0 +1,1 @@
+Delete p1on p1.email = p2.email from Person p1join Person p2where p1.id > p2.id ;
