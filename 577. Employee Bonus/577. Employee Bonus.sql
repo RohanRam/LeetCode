@@ -1,0 +1,1 @@
+select e.name , b.bonus from Employee as eleft join Bonus as bon e.empId = b.empId where ( b.bonus <= 1000 || b.bonus is Null ) ;
