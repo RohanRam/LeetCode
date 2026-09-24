@@ -1,0 +1,1 @@
+Select p.project_id ,  round(avg(e.experience_years),2) as average_yearsfrom Employee as ejoin Project as pon e.employee_id  = p.employee_id group  by project_id ;
