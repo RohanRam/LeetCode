@@ -1,0 +1,1 @@
+select p.product_id , p.product_name from Sales as sjoin Product as pon p.product_id = s.product_id GROUP BY p.product_id, p.product_namehaving min(sale_date) >= '2019-01-01'and max(sale_date) <= '2019-03-31';
