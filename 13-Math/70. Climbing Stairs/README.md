@@ -38,125 +38,73 @@
 
 ## Approach 1: Bottom-Up Dynamic Programming (Tabulation)
 ### Intuition
-Imagine you are standing at the base of a staircase, trying to reach step $n$. At any given step $i$, the rules allow you to move forward either by 1 step or by 2 steps. Working backwards, to land on step $i$, your immediate previous position must have been either step $i-1$ (taking a 1-step hop) or step $i-2$ (taking a 2-step hop). 
+Imagine you are standing at the base of a flight of stairs and want to reach the $n$-th step. At any step $i$, you could have only arrived from one of two places: step $i - 1$ (by taking a single 1-step leap) or step $i - 2$ (by taking a 2-step leap). 
 
-Because these two arrival paths are mutually exclusive and encompass all possible valid moves onto step $i$, the total number of distinct ways to reach step $i$ is simply the sum of the total ways to reach step $i-1$ and the total ways to reach step $i-2$. This forms the classic Fibonacci sequence pattern ($F(n) = F(n-1) + F(n-2)$), solved efficiently here using bottom-up dynamic programming via tabulation.
+Because these two possibilities are mutually exclusive and cover every valid way to reach step $i$, the total number of distinct ways to reach step $i$ is simply the sum of the distinct ways to reach step $i - 1$ and step $i - 2$. This matches the classic Fibonacci recurrence:
+$$\text{ways}(i) = \text{ways}(i - 1) + \text{ways}(i - 2)$$
+
+Instead of recalculating these values repeatedly via recursion, we build a table from the ground up starting from the base cases ($0$ and $1$).
 
 ### Algorithm Visualized
 ```mermaid
-graph TD
-    classDef base fill:#d4edda,stroke:#28a745,color:#155724;
-    classDef calc fill:#cce5ff,stroke:#004085,color:#004085;
-
-    Step1["dp[1] = 1<br>(Base Case)"]:::base
-    Step2["dp[2] = 2<br>(Base Case)"]:::base
-    Step3["dp[3] = dp[2] + dp[1]<br>(2 + 1 = 3)"]:::calc
-    Step4["dp[4] = dp[3] + dp[2]<br>(3 + 2 = 5)"]:::calc
-    StepN["dp[n] = dp[n-1] + dp[n-2]"]:::calc
-
-    Step1 --> Step3
-    Step2 --> Step3
-    Step2 --> Step4
-    Step3 --> Step4
-    Step3 -.-> StepN
-    Step4 -.-> StepN
+flowchart TD
+    A["dp[0] = 1 (Ground)"] --> C["dp[2] = dp[1] + dp[0] = 2"]
+    B["dp[1] = 1 (Step 1)"] --> C
+    B --> D["dp[3] = dp[2] + dp[1] = 3"]
+    C --> D
+    C --> E["dp[4] = dp[3] + dp[2] = 5"]
+    D --> E
+    E --> F["... dp[n]"]
 ```
 
 ### Approach
-1. **DP Array Allocation**: Create a table `dp` initialized with zeros of size $n + 2$. Allocating $n + 2$ elements prevents out-of-bounds indexing errors when initializing base cases for small inputs like $n = 1$.
-2. **Base Case Setup**: Pre-fill the base values:
-   - `dp[1] = 1`: There is 1 distinct way to reach step 1 (take 1 step).
-   - `dp[2] = 2`: There are 2 distinct ways to reach step 2 (1 step + 1 step, or 2 steps directly).
-3. **Guard Clauses for Base Inputs**: Check if $n == 1$ or $n == 2$ to return early.
-4. **Iterative Tabulation**: For values of $n \ge 3$, loop from $3$ up to $n$ (inclusive). Compute each state using the transition equation:
-   $$\text{dp}[i] = \text{dp}[i-1] + \text{dp}[i-2]$$
-5. **Result Extraction**: Return `dp[n]`, which holds the aggregated number of total distinct ways to reach the $n$-th step.
+1. **Handle Base Cases Early:** If $n \le 1$, return $1$ immediately, as there is only 1 way to reach the ground (0 steps: do nothing) or 1 step (1 single step).
+2. **Allocate State Array:** Initialize an array `dp` of size $n + 1$ with zeros to store the number of ways to reach each step from $0$ to $n$.
+3. **Seed Known Values:** Set `dp[0] = 1` and `dp[1] = 1`.
+4. **Iterative Transition:** Iterate through each step $i$ from $2$ up to $n$, populating `dp[i]` by adding `dp[i - 1]` and `dp[i - 2]`.
+5. **Extract Result:** The value at `dp[n]` holds the total distinct ways to reach step $n$.
 
 ### Detailed Code Analysis
-
-Let's dissect the implementation line by line:
-
-```python
-dp = [0] * (n + 2)
-```
-* **Line 4**: Instantiates an array `dp` of size `n + 2` filled with zeros. The additional size overhead (`+ 2`) is a defensive measure so that index `2` is always valid in memory even when $n = 1$.
-
-```python
-dp[1] = 1
-dp[2] = 2
-```
-* **Lines 6–7**: Explicitly sets the base cases for $dp[1]$ and $dp[2]$. Notice this assignment runs unconditionally before checking the value of `n`.
-
-```python
-if n == 1:
-    return 1
-elif n == 2:
-    return 2
-```
-* **Lines 9–12**: Evaluates edge cases where $n$ is either $1$ or $2$. Returns static integer answers immediately, bypassing loop execution.
-
-```python
-else:
-    for i in range(3, n + 1):
-        dp[i] = dp[i - 1] + dp[i - 2]
-    
-    return dp[n]
-```
-* **Lines 13–17**: If $n \ge 3$, the code enters the `else` block:
-  * `range(3, n + 1)` iterates through all step indices from $3$ up to $n$.
-  * `dp[i] = dp[i - 1] + dp[i - 2]` populates the current index by adding the solutions of the two prior subproblems.
-  * `return dp[n]` returns the accumulated total stored at position `n`.
+- `if n <= 1: return 1`  
+  Guards against edge cases where $n = 0$ or $n = 1$. It prevents unnecessary array allocations and handles minimal input values in $O(1)$ time.
+- `dp = [0] * (n + 1)`  
+  Allocates a list of size $n + 1$. An index corresponds directly to the step number (from $0$ to $n$), which avoids off-by-one indexing adjustments.
+- `dp[0] = 1` and `dp[1] = 1`  
+  Establishes the boundary conditions:
+  - `dp[0] = 1`: There is 1 way to stay at the ground (take 0 steps). This mathematical convention ensures `dp[2] = dp[1] + dp[0] = 1 + 1 = 2` calculates correctly.
+  - `dp[1] = 1`: There is only 1 way to reach step 1 (a single 1-step move).
+- `for i in range(2, n + 1):`  
+  Runs a loop from step $2$ through step $n$, visiting every subproblem in increasing order of complexity.
+- `dp[i] = dp[i - 1] + dp[i - 2]`  
+  Applies the state transition formula. Each entry resolves in $O(1)$ time by reusing previously computed answers stored in the table.
+- `return dp[n]`  
+  *(Note on indentation: In the provided raw snippet, `return dp[n]` was placed with inner indentation. Semantically and logically in Python, it must sit outside the loop).* Returns the fully computed number of ways to reach step $n$.
 
 ### Code
 ```python
 class Solution:
     def climbStairs(self, n: int) -> int:
-
-        dp = [0] * (n + 2)
-
-        dp[1] = 1
-        dp[2] = 2
-
-        if n == 1:
+        if n <= 1:
             return 1
-        elif n == 2:
-            return 2
-        else:
-            for i in range(3, n + 1):
-                dp[i] = dp[i - 1] + dp[i - 2]
         
-            return dp[n]
+        dp = [0] * (n + 1)
+        dp[0] = 1
+        dp[1] = 1
+        
+        for i in range(2, n + 1):
+            dp[i] = dp[i - 1] + dp[i - 2]
+            
+        return dp[n]
 ```
 
 ### Complexity
-- **Time Complexity:** $\mathcal{O}(n)$ — The `for` loop executes $n - 2$ times when $n \ge 3$. Inside the loop, state lookup and addition run in constant time $\mathcal{O}(1)$.
-- **Space Complexity:** $\mathcal{O}(n)$ — The primary memory overhead comes from allocating the `dp` list of length $n + 2$.
-
----
+- **Time:** $O(n)$ — The algorithm executes a single `for` loop that runs from $2$ to $n$. Each iteration performs an $O(1)$ addition and array access.
+- **Space:** $O(n)$ — A dynamic programming array of size $n + 1$ is allocated in memory to store the intermediate states.
 
 ## 🕵️‍♂️ Follow-up Questions (Optional)
 
-### 1. How would you optimize the Space Complexity from $\mathcal{O}(n)$ to $\mathcal{O}(1)$?
-**Answer:** Notice that calculating `dp[i]` only ever requires access to the immediate two previous states (`dp[i-1]` and `dp[i-2]`). We don't need to keep the entire historical array in memory. We can replace the array with two scalar variables (`prev1` and `prev2`) and update them iteratively:
+1. **Can this solution be optimized to $O(1)$ auxiliary space?**
+   - **Answer:** Yes. Notice that computing `dp[i]` only depends on the previous two values (`dp[i - 1]` and `dp[i - 2]`). Instead of maintaining an entire list of size $n + 1$, we can maintain two variables (e.g., `prev1` and `prev2`) and update them iteratively, reducing space complexity from $O(n)$ to $O(1)$.
 
-```python
-class Solution:
-    def climbStairs(self, n: int) -> int:
-        if n <= 2:
-            return n
-        
-        prev2, prev1 = 1, 2
-        for _ in range(3, n + 1):
-            curr = prev1 + prev2
-            prev2 = prev1
-            prev1 = curr
-            
-        return prev1
-```
-This reduces auxiliary space to $\mathcal{O}(1)$ while maintaining $\mathcal{O}(n)$ time complexity.
-
-### 2. What if a climber could take up to $k$ steps at a time instead of just 1 or 2?
-**Answer:** The state transition generalizes to summing the previous $k$ steps:
-$$\text{dp}[i] = \sum_{j=1}^{k} \text{dp}[i-j]$$
-
-Using a nested loop or a sliding window sum, this generalized version can be solved in $\mathcal{O}(n \cdot k)$ time with a sliding window approach optimizing it down to $\mathcal{O}(n)$ time complexity.
+2. **Can we achieve a time complexity faster than $O(n)$?**
+   - **Answer:** Yes. Since the transition represents the standard Fibonacci recurrence $\begin{pmatrix} F_{k+1} \\ F_k \end{pmatrix} = \begin{pmatrix} 1 & 1 \\ 1 & 0 \end{pmatrix} \begin{pmatrix} F_k \\ F_{k-1} \end{pmatrix}$, we can use **Matrix Exponentiation** to compute the $n$-th state in $O(\log n)$ time, or use Binet's closed-form formula in $O(1)$ time (subject to floating-point precision limits).
