@@ -35,56 +35,138 @@
 
 # 🛍️ Search-in-Rotated-Sorted-Array | Explained
 
-## Approach 1: Linear Search (Brute Force)
+## Approach 1: Modified One-Pass Binary Search
 ### Intuition
-Imagine looking for a specific book on a single bookshelf where the books were originally in alphabetical order, but someone picked up a section from the end and put it at the beginning. If you choose to ignore the partial ordering and simply check every single book one by one from left to right, you are performing a linear search. This approach works unconditionally because checking every element guarantees you will either find the target or prove it is not present in the array.
+Imagine you have a two-volume encyclopedia where the volumes were placed on a bookshelf out of order: Volume 2 is on the left, and Volume 1 is on the right (e.g., `[4, 5, 6, 7, 0, 1, 2]`). If you split this collection at any arbitrary book, at least one of the two halves will always be in perfect, unbroken alphabetical order. 
+
+Because one half is guaranteed to be sorted, you can inspect its starting and ending titles to determine definitively if your target word falls within that section. 
+- If the target falls within that sorted segment's boundary, you can safely discard the other half and restrict your search there.
+- If it doesn't, the target *must* reside in the other half (which contains the inflection point/rotation pivot). 
+
+This allows us to maintain the logarithmic halving property of standard binary search, even without the entire array being uniformly sorted.
 
 ### Algorithm Visualized
+
 ```mermaid
-graph TD
-    A[Start Search] --> B[Initialize length n = len nums]
-    B --> C[Loop i from 0 to n-1]
-    C --> D{Is nums[i] == target?}
-    D -- Yes --> E[Return Index i]
-    D -- No --> F[Continue Loop]
-    F --> C
-    C -- Exhausted Array --> G[Return -1]
+flowchart TD
+    Start([Start: l = 0, r = len - 1]) --> CheckLoop{l <= r?}
+    CheckLoop -- No --> NotFound([Return -1])
+    CheckLoop -- Yes --> CalcMid[Calculate mid = l + r - l // 2]
+    
+    CalcMid --> CheckTarget{nums[mid] == target?}
+    CheckTarget -- Yes --> Found([Return mid])
+    CheckTarget -- No --> CheckSortedHalf{nums[l] <= nums[mid]?}
+    
+    %% Left half sorted branch
+    CheckSortedHalf -- Yes: Left Half Sorted --> InLeftRange{nums[l] <= target < nums[mid]?}
+    InLeftRange -- Yes --> MoveR1[r = mid - 1]
+    InLeftRange -- No --> MoveL1[l = mid + 1]
+    
+    %% Right half sorted branch
+    CheckSortedHalf -- No: Right Half Sorted --> InRightRange{nums[mid] < target <= nums[r]?}
+    InRightRange -- Yes --> MoveL2[l = mid + 1]
+    InRightRange -- No --> MoveR2[r = mid - 1]
+    
+    MoveR1 --> CheckLoop
+    MoveL1 --> CheckLoop
+    MoveL2 --> CheckLoop
+    MoveR2 --> CheckLoop
 ```
 
 ### Approach
-1. Determine the length of the input array `nums` and store it in `n`.
-2. Iterate through each index `i` from `0` to `n - 1`.
-3. Compare the element at the current index `nums[i]` with the `target`.
-4. If a match is found, immediately return the current index `i`.
-5. If the loop completes without finding the `target`, return `-1` to indicate that the target does not exist in the array.
+1. **Initialize Pointers:** Set two pointers, `l = 0` and `r = len(nums) - 1`.
+2. **Loop Invariant:** While `l <= r`, calculate the midpoint `mid = l + (r - l) // 2`.
+3. **Target Match:** Check if `nums[mid] == target`. If so, return `mid` immediately.
+4. **Identify the Sorted Half:**
+   - **Case A: Left half is sorted (`nums[l] <= nums[mid]`)**
+     - Check if `target` falls strictly within the sorted left half: `nums[l] <= target < nums[mid]`.
+     - If it does, eliminate the right half by setting `r = mid - 1`.
+     - Otherwise, the target must be in the right half, so set `l = mid + 1`.
+   - **Case B: Right half is sorted (`nums[l] > nums[mid]`)**
+     - Check if `target` falls strictly within the sorted right half: `nums[mid] < target <= nums[r]`.
+     - If it does, eliminate the left half by setting `l = mid + 1`.
+     - Otherwise, the target must be in the left half, so set `r = mid - 1`.
+5. **Element Absent:** If `l > r` without finding the target, return `-1`.
 
 ### Detailed Code Analysis
-- **Line 3 (`n=len(nums)`):** Calculates the total number of elements in the array `nums` and assigns it to variable `n`.
-- **Line 4 (`for i in range(n):`):** Establishes a `for` loop that iterates sequentially through all valid indices from `0` up to `n - 1`.
-- **Line 5 (`if nums[i] == target :`):** Evaluates whether the value at index `i` matches the specified `target`.
-- **Line 6 (`return i`):** Short-circuits the function execution and returns the index `i` as soon as the target element is encountered.
-- **Line 8 (`return -1`):** Executes only if the loop finishes without triggering the return statement inside the conditional check, signalling that the target is absent from `nums`.
+
+```python
+class Solution:
+    def search(self, nums: List[int], target: int) -> int:
+        l = 0
+        r = len(nums) - 1
+```
+- **Lines 3–4:** We establish our two-pointer search space covering the full index range `[0, len(nums) - 1]`.
+
+```python
+        while l <= r:
+            mid = l + (r - l) // 2
+            if nums[mid] == target:
+                return mid
+```
+- **Lines 5–8:** Standard binary search loop. Using `mid = l + (r - l) // 2` prevents potential 32-bit integer overflow (best practice, even though Python dynamically handles arbitrarily large integers). If `nums[mid]` matches `target`, we immediately terminate and return the index.
+
+```python
+            if nums[l] <= nums[mid]:
+                if nums[l] <= target < nums[mid]:
+                    r = mid - 1
+                else:
+                    l = mid + 1
+```
+- **Line 10 (`nums[l] <= nums[mid]`):** Determines if the left segment `nums[l...mid]` is monotonically increasing. The `<=` equality check is crucial to handle the edge case where `l == mid` (subarrays of size 1 or 2).
+- **Line 11 (`nums[l] <= target < nums[mid]`):** If the left segment is sorted, we perform a straightforward range check. If the target falls between `nums[l]` (inclusive) and `nums[mid]` (exclusive), we discard the right half by contracting the upper bound: `r = mid - 1`.
+- **Lines 13–14:** If the target does not lie in this sorted left range, it must be in the unsorted right segment; hence, `l = mid + 1`.
+
+```python
+            else:
+                if nums[mid] < target <= nums[r]:
+                    l = mid + 1
+                else:
+                    r = mid - 1
+```
+- **Line 15:** If `nums[l] > nums[mid]`, the pivot exists in the left half, which means the right segment `nums[mid...r]` is guaranteed to be sorted.
+- **Line 16 (`nums[mid] < target <= nums[r]`):** We verify whether `target` falls within the boundary of this sorted right segment.
+- **Lines 17–19:** If it falls in the right segment, move `l = mid + 1`. Otherwise, search the left segment by moving `r = mid - 1`.
+
+```python
+        return -1
+```
+- **Line 20:** If the search window collapses (`l > r`) without a match, the target is not present in the array.
 
 ### Code
 ```python
 class Solution:
     def search(self, nums: List[int], target: int) -> int:
-        n=len(nums)
-        for i in range(n):
-            if nums[i] == target :
-                return i
- 
+        l = 0
+        r = len(nums) - 1
+        while l <= r:
+            mid = l + (r - l) // 2
+            if nums[mid] == target:
+                return mid
+
+            if nums[l] <= nums[mid]:
+                if nums[l] <= target < nums[mid]:
+                    r = mid - 1
+                else:
+                    l = mid + 1
+            else:
+                if nums[mid] < target <= nums[r]:
+                    l = mid + 1
+                else:
+                    r = mid - 1
         return -1
 ```
 
 ### Complexity
-- **Time:** $\mathcal{O}(N)$, where $N$ is the number of elements in `nums`. In the worst-case scenario ( target is at the last position or not present at all), every element in the array must be inspected once.
-- **Space:** $\mathcal{O}(1)$ auxiliary space, as the algorithm only uses a single integer variable `n` and loop counter `i`, requiring constant additional memory regardless of input size.
+- **Time: $O(\log n)$** — At each iteration of the `while` loop, we eliminate exactly half of the remaining search space, matching the time complexity of classical binary search.
+- **Space: $O(1)$** — The algorithm operates purely iteratively using constant auxiliary memory (`l`, `r`, `mid`).
+
+---
 
 ## 🕵️‍♂️ Follow-up Questions (Optional)
 
-1. **Can we improve the time complexity to $\mathcal{O}(\log N)$?**
-   - **Answer:** Yes. Because the original array was sorted prior to rotation, one half of the array divided by the midpoint will always remain strictly sorted. By modified Binary Search, we can identify which half is sorted, check if the `target` falls within that sorted range, and discard the other half in each step, reducing time complexity to $\mathcal{O}(\log N)$.
+1. **What happens if the array contains duplicates (LeetCode 81)?**
+   - If duplicates are introduced, the condition `nums[l] <= nums[mid]` no longer guarantees that the left half is sorted. For instance, in `[3, 1, 2, 3, 3, 3, 3]`, `nums[l] == nums[mid] == nums[r]`. In this scenario, we cannot deduce which side is sorted and must increment `l` (or decrement `r`) by 1 to skip duplicates, which degrades the worst-case time complexity to **$O(n)$**.
 
-2. **How does this solution handle duplicate values if the problem constraints are relaxed?**
-   - **Answer:** Linear search handles duplicates automatically without modification because it checks every index sequentially. However, for a binary search approach, duplicates make it impossible to determine which half is sorted when `nums[left] == nums[mid] == nums[right]`, forcing a worst-case degradation to $\mathcal{O}(N)$.
+2. **Can this problem be solved using a two-pass binary search?**
+   - Yes. Pass 1 finds the index of the minimum element (the rotation pivot) in $O(\log n)$ time. Pass 2 performs a standard binary search on either the left or right sorted subarray depending on which range `target` falls into. While asymptotically identical ($O(\log n)$), your one-pass approach is cleaner and requires fewer comparisons.
